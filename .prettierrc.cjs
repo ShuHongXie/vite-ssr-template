@@ -6,6 +6,7 @@ module.exports = {
   singleQuote: true,
   trailingComma: 'none',
   semi: false,
+  vueIndentScriptAndStyle: true,
   overrides: [
     {
       files: '*.json',

@@ -1,3 +1,1 @@
-export default {
-  host: 9999
-}
+export const port = 9999

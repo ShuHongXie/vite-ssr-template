@@ -1,63 +1,93 @@
 import fs from 'fs'
 import path from 'path'
 import express from 'express'
-import { createServer as createViteServer } from 'vite'
-import config from './config/server'
-
+import { port } from './config/server'
+import { fileURLToPath } from 'node:url'
 const isProd = process.env.NODE_ENV === 'production'
 
 async function createServer() {
+  console.log('执行')
+
   const app = express()
+
+  const __dirname = path.dirname(fileURLToPath(import.meta.url))
+  const resolve = (p: string) => path.resolve(__dirname, p)
+
+  const indexProd = isProd ? fs.readFileSync(resolve('dist/client/index.html'), 'utf-8') : ''
+
+  const manifest = isProd
+    ? // @ts-ignore
+      (await import('./dist/client/ssr-manifest.json')).default
+    : {}
 
   // 以中间件模式创建 Vite 应用，这将禁用 Vite 自身的 HTML 服务逻辑
   // 并让上级服务器接管控制
-  //
-  // 如果你想使用 Vite 自己的 HTML 服务逻辑（将 Vite 作为
-  // 一个开发中间件来使用），那么这里请用 'html'
-  const vite = await createViteServer({
-    server: { middlewareMode: true },
-    appType: 'custom'
-  })
-  // 使用 vite 的 Connect 实例作为中间件
-  app.use(vite.middlewares)
+
+  let vite
+  if (!isProd) {
+    vite = await (
+      await import('vite')
+    ).createServer({
+      base: '/test/',
+      root: process.cwd(),
+      logLevel: 'error',
+      server: {
+        middlewareMode: true,
+        watch: {
+          usePolling: true,
+          interval: 100
+        },
+        hmr: {
+          port: port
+        }
+      },
+      appType: 'custom'
+    })
+    // use vite's connect instance as middleware
+    app.use(vite.middlewares)
+  } else {
+    app.use((await import('compression')).default())
+    app.use(
+      '/',
+      // @ts-ignore
+      (await import('serve-static')).default(resolve('dist/client'), {
+        index: false
+      })
+    )
+  }
 
   app.use('*', async (req, res) => {
-    const url = req.originalUrl
-
     try {
-      let template = fs.readFileSync(path.resolve(__dirname, 'src/index.html'), 'utf-8')
+      const { originalUrl: url } = req
 
-      // 2. 应用 Vite HTML 转换。这将会注入 Vite HMR 客户端，
-      //    同时也会从 Vite 插件应用 HTML 转换。
-      //    例如：@vitejs/plugin-react-refresh 中的 global preambles
-      template = await vite.transformIndexHtml(url, template)
+      let template, render
+      if (!isProd) {
+        // always read fresh template in dev
+        template = fs.readFileSync(resolve('index.html'), 'utf-8')
+        template = await vite.transformIndexHtml(url, template)
+        render = (await vite.ssrLoadModule('/src/server.ts')).render
+      } else {
+        template = indexProd
+        // @ts-ignore
+        render = (await import('./dist/server/server.ts')).render
+      }
 
-      // 3. 加载服务器入口。vite.ssrLoadModule 将自动转换
-      //    你的 ESM 源码使之可以在 Node.js 中运行！无需打包
-      //    并提供类似 HMR 的根据情况随时失效。
-      const { render } = await vite.ssrLoadModule('/src/server.ts')
+      const [appHtml, preloadLinks] = await render(url, manifest)
 
-      // 4. 渲染应用的 HTML。这假设 entry-server.js 导出的 `render`
-      //    函数调用了适当的 SSR 框架 API。
-      //    例如 ReactDOMServer.renderToString()
-      const appHtml = await render(url)
+      const html = template
+        .replace(`<!--preload-links-->`, preloadLinks)
+        .replace(`<!--app-html-->`, appHtml)
 
-      // 5. 注入渲染后的应用程序 HTML 到模板中。
-      const html = template.replace(`<!--ssr-outlet-->`, appHtml)
-
-      // 6. 返回渲染后的 HTML。
       res.status(200).set({ 'Content-Type': 'text/html' }).end(html)
     } catch (e: any) {
-      // 如果捕获到了一个错误，让 Vite 来修复该堆栈，这样它就可以映射回
-      // 你的实际源码中。
-      vite.ssrFixStacktrace(e)
-      console.error(e)
-      res.status(500).end(e.message)
+      vite && vite.ssrFixStacktrace(e)
+      console.log(e.stack)
+      res.status(500).end(e.stack)
     }
   })
 
-  app.listen(config.host, () => {
-    console.log(`服务监听于: http://localhost:${config.host}`)
+  app.listen(port, () => {
+    console.log(`服务监听于: http://localhost:${port}`)
   })
 }
 
