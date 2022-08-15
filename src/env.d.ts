@@ -11,3 +11,8 @@ declare module 'electron'
 declare module 'isomorphic-git'
 declare module '@isomorphic-git/lightning-fs'
 declare module 'db'
+
+declare interface Window {
+  __INITIAL_STATE__: string
+  __pinia: string
+}

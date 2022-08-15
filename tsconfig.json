@@ -103,6 +103,8 @@
     "skipLibCheck": true /* Skip type checking all .d.ts files. */
   },
   "ts-node": {
+    "transpileOnly": true,
+    "esm": true,
     "compilerOptions": {
       "module": "esnext"
     }

@@ -3,18 +3,17 @@ import path from 'path'
 import express from 'express'
 import { port } from './config/server'
 import { fileURLToPath } from 'node:url'
+import devalue from '@nuxt/devalue'
 const isProd = process.env.NODE_ENV === 'production'
 
 async function createServer() {
   console.log('执行')
-
   const app = express()
 
   const __dirname = path.dirname(fileURLToPath(import.meta.url))
   const resolve = (p: string) => path.resolve(__dirname, p)
 
   const indexProd = isProd ? fs.readFileSync(resolve('dist/client/index.html'), 'utf-8') : ''
-
   const manifest = isProd
     ? // @ts-ignore
       (await import('./dist/client/ssr-manifest.json')).default
@@ -28,7 +27,7 @@ async function createServer() {
     vite = await (
       await import('vite')
     ).createServer({
-      base: '/test/',
+      base: '/',
       root: process.cwd(),
       logLevel: 'error',
       server: {
@@ -38,7 +37,7 @@ async function createServer() {
           interval: 100
         },
         hmr: {
-          port: port
+          port: 9998
         }
       },
       appType: 'custom'
@@ -57,26 +56,31 @@ async function createServer() {
   }
 
   app.use('*', async (req, res) => {
+    console.log('进入服务器路由')
     try {
       const { originalUrl: url } = req
+      let context = { url, state: {} }
 
       let template, render
       if (!isProd) {
         // always read fresh template in dev
         template = fs.readFileSync(resolve('index.html'), 'utf-8')
         template = await vite.transformIndexHtml(url, template)
-        render = (await vite.ssrLoadModule('/src/server.ts')).render
+        render = (await vite.ssrLoadModule('/src/server.ts')).default
+        console.log(template, render)
       } else {
         template = indexProd
         // @ts-ignore
-        render = (await import('./dist/server/server.ts')).render
+        render = (await import('./dist/server/server.js')).default
       }
+      console.log('准备渲染')
 
-      const [appHtml, preloadLinks] = await render(url, manifest)
-
+      const { appHtml, preloadLinks } = await render(context, manifest)
+      console.log(appHtml, template)
       const html = template
         .replace(`<!--preload-links-->`, preloadLinks)
-        .replace(`<!--app-html-->`, appHtml)
+        .replace(`<!--ssr-outlet-->`, appHtml)
+        .replace(`// --state--outlet`, `window.__INITIAL_STATE__=${devalue(context.state) || {}}`)
 
       res.status(200).set({ 'Content-Type': 'text/html' }).end(html)
     } catch (e: any) {
