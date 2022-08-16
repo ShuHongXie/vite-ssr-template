@@ -8,7 +8,8 @@ const { instance, router, store } = createApp()
 // HTML 是预渲染的，然后执行激活过程，
 // 而不是挂载新的 DOM 节点
 console.log(window.__pinia, window.__INITIAL_STATE__, store.state.value)
-// store.state.value = window.__INITIAL_STATE__ || ({} as any)
+store.state.value = window.__INITIAL_STATE__ || ({} as any)
+
 router.isReady().then(() => {
   instance.mount('#app')
 })

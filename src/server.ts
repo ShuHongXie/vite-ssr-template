@@ -10,14 +10,15 @@ export default async function render(context) {
 
   router.push(context.url)
   await router.isReady()
-  console.log(store.state.value)
+  console.log(store.state.value, context.url)
 
   // devalue(store.state.value)
   context.store = store.state.value
 
   // 执行asyncData(); 注意顺序与renderToString的顺序
   // await invokeAsyncData({ route: router.currentRoute.value })
-  console.log('router is already s')
+  console.log('router is already s', router.currentRoute.value.matched)
+  router.currentRoute.value.matched.flatMap((record: any) => console.log(record.components))
   const ctx = {}
 
   const appHtml = await renderToString(instance, ctx)

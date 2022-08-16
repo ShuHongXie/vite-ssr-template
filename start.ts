@@ -59,7 +59,7 @@ async function createServer() {
     console.log('进入服务器路由')
     try {
       const { originalUrl: url } = req
-      let context = { url, state: {} }
+      let context = { url, state: {}, store: {} }
 
       let template, render
       if (!isProd) {
@@ -76,11 +76,11 @@ async function createServer() {
       console.log('准备渲染')
 
       const { appHtml, preloadLinks } = await render(context, manifest)
-      console.log(appHtml, template)
+      console.log(appHtml, context)
       const html = template
         .replace(`<!--preload-links-->`, preloadLinks)
         .replace(`<!--ssr-outlet-->`, appHtml)
-        .replace(`// --state--outlet`, `window.__INITIAL_STATE__=${devalue(context.state) || {}}`)
+        .replace(`// --state--outlet`, `window.__INITIAL_STATE__=${devalue(context.store) || {}}`)
 
       res.status(200).set({ 'Content-Type': 'text/html' }).end(html)
     } catch (e: any) {
