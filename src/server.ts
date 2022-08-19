@@ -10,7 +10,7 @@ export default async function render(context) {
 
   router.push(context.url)
   await router.isReady()
-  console.log(store.state.value, context.url)
+  // console.log(store.state.value, context.url)
 
   // devalue(store.state.value)
   context.store = store.state.value
