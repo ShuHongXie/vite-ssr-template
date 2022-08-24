@@ -13,7 +13,7 @@ export default async function render(context) {
   // console.log(store.state.value, context.url)
 
   // devalue(store.state.value)
-  context.store = store.state.value
+  store.state.value = context.store
 
   // 执行asyncData(); 注意顺序与renderToString的顺序
   // await invokeAsyncData({ route: router.currentRoute.value })

@@ -1,10 +1,13 @@
 import fs from 'fs'
 import path from 'path'
 import express from 'express'
-import { port } from './config/server'
+import { port } from '../config/server'
 import { fileURLToPath } from 'node:url'
 import devalue from '@nuxt/devalue'
 const isProd = process.env.NODE_ENV === 'production'
+import { useApp, AppCtx } from './context'
+
+let context = useApp() as AppCtx
 
 async function createServer() {
   console.log('执行')
@@ -16,7 +19,7 @@ async function createServer() {
   const indexProd = isProd ? fs.readFileSync(resolve('dist/client/index.html'), 'utf-8') : ''
   const manifest = isProd
     ? // @ts-ignore
-      (await import('./dist/client/ssr-manifest.json')).default
+      (await import('../dist/client/ssr-manifest.json')).default
     : {}
 
   // 以中间件模式创建 Vite 应用，这将禁用 Vite 自身的 HTML 服务逻辑
@@ -56,22 +59,23 @@ async function createServer() {
   }
 
   app.use('*', async (req, res) => {
-    console.log('进入服务器路由')
+    console.log('进入服务器路由2')
     try {
       const { originalUrl: url } = req
-      let context = { url, state: {}, store: {} }
+      console.log(context)
+      context.url = url
 
       let template, render
       if (!isProd) {
         // always read fresh template in dev
-        template = fs.readFileSync(resolve('index.html'), 'utf-8')
+        template = fs.readFileSync(resolve('../index.html'), 'utf-8')
         template = await vite.transformIndexHtml(url, template)
         render = (await vite.ssrLoadModule('/src/server.ts')).default
         console.log(template, render)
       } else {
         template = indexProd
         // @ts-ignore
-        render = (await import('./dist/server/server.js')).default
+        render = (await import('../dist/server/server.js')).default
       }
       console.log('准备渲染')
 

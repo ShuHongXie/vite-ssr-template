@@ -8,6 +8,5 @@ export default function createApp() {
   const router = createRouter()
   const store = createPinia()
   const instance = createSSRApp(app).use(router).use(store)
-  useCommonStore()
   return { router, instance, store }
 }
