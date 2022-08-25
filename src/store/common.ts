@@ -1,4 +1,4 @@
-import { defineStore } from 'pinia'
+import { acceptHMRUpdate, defineStore } from 'pinia'
 
 const useCommonStore = defineStore('common', {
   // 推荐使用 完整类型推断的箭头函数
@@ -16,5 +16,9 @@ const useCommonStore = defineStore('common', {
     }
   }
 })
+
+if (import.meta.hot) {
+  import.meta.hot.accept(acceptHMRUpdate(useCommonStore, import.meta.hot))
+}
 
 export default useCommonStore

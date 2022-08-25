@@ -1,10 +1,19 @@
+// import { useApp, AppCtx } from '../../server/context'
+// const app = useApp() as AppCtx
 
+import { ref } from 'vue'
 
 export default async function useAsyncData(cb: Function) {
-  if(typeof cb !== 'function') {
-    throw Error('cb must be a function')
-    return false
+  const asyncData = {
+    data: ref(null),
+    pending: ref(false),
+    error: ref(null)
   }
-  const data = await cb()
-  return data
+  console.log('execute useAsyncData')
+  if (import.meta.env.SSR) {
+    asyncData.data.value = cb()
+    return Promise.resolve(asyncData.data)
+  } else {
+    return Promise.resolve(asyncData.data)
+  }
 }

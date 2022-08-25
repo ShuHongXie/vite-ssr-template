@@ -7,8 +7,6 @@ import devalue from '@nuxt/devalue'
 const isProd = process.env.NODE_ENV === 'production'
 import { useApp, AppCtx } from './context'
 
-let context = useApp() as AppCtx
-
 async function createServer() {
   console.log('执行')
   const app = express()
@@ -61,6 +59,7 @@ async function createServer() {
   app.use('*', async (req, res) => {
     console.log('进入服务器路由2')
     try {
+      let context = useApp() as AppCtx
       const { originalUrl: url } = req
       console.log(context)
       context.url = url
@@ -71,20 +70,17 @@ async function createServer() {
         template = fs.readFileSync(resolve('../index.html'), 'utf-8')
         template = await vite.transformIndexHtml(url, template)
         render = (await vite.ssrLoadModule('/src/server.ts')).default
-        console.log(template, render)
       } else {
         template = indexProd
         // @ts-ignore
         render = (await import('../dist/server/server.js')).default
       }
-      console.log('准备渲染')
 
       const { appHtml, preloadLinks } = await render(context, manifest)
-      console.log(appHtml, context)
       const html = template
         .replace(`<!--preload-links-->`, preloadLinks)
         .replace(`<!--ssr-outlet-->`, appHtml)
-        .replace(`// --state--outlet`, `window.__INITIAL_STATE__=${devalue(context.store) || {}}`)
+      // .replace(`// --state--outlet`, `window.__INITIAL_STATE__=${devalue(context.store) || {}}`)
 
       res.status(200).set({ 'Content-Type': 'text/html' }).end(html)
     } catch (e: any) {
